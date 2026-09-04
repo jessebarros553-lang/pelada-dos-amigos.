@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PELADA DOS AMIGOS - Inscrição e Pagamento</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#22c55e', 600: '#16a34a', 700: '#15803d' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-full font-sans antialiased flex flex-col justify-between selection:bg-green-500 selection:text-black">
+
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-4">
+        <div id="toast-content" class="bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-sm">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-green-500 text-lg"></i>
+            <span id="toast-msg">Mensagem</span>
+        </div>
+    </div>
+
+    <div id="modal-reserve" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-5">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2 text-green-500">
+                    <i class="fa-solid fa-futbol text-xl"></i>
+                    <h3 class="font-black text-white text-lg tracking-wide">GARANTA SUA VAGA</h3>
+                </div>
+                <button onclick="closeReserveModal()" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/50">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <form onsubmit="submitReservation(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Digite seu nome completo:</label>
+                    <input type="text" id="athlete-name" required placeholder="Ex: João da Silva" 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 text-white placeholder-slate-600 focus:outline-none focus:border-green-500 font-medium text-base shadow-inner">
+                </div>
+                <button type="submit" id="submit-btn" class="w-full bg-green-600 hover:bg-green-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-lg shadow-green-900/50 flex items-center justify-center space-x-2 text-base active:scale-98">
+                    <i class="fa-solid fa-circle-check text-slate-950"></i>
+                    <span>CONFIRMAR VAGA</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-success" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-6 text-center">
+            <div class="w-16 h-16 bg-green-500/10 border border-green-500/30 text-green-500 rounded-full flex items-center justify-center mx-auto text-2xl shadow-xl">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <div>
+                <h3 class="font-black text-white text-xl">VAGA RESERVADA!</h3>
+                <p id="success-subtext" class="text-slate-400 text-sm mt-1">Tudo certo! Sua vaga na pelada está garantida. Lembre-se de realizar o pagamento com o organizador.</p>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 text-left space-y-2 text-xs text-slate-300">
+                <div class="font-bold text-white text-sm flex items-center"><i class="fa-solid fa-futbol text-green-500 mr-2"></i> Pelada dos Amigos</div>
+                <div id="success-date" class="flex items-center"><i class="fa-regular fa-calendar mr-2 text-slate-400"></i> Quarta-feira, 09 de Setembro</div>
+                <div id="success-time" class="flex items-center"><i class="fa-regular fa-clock mr-2 text-slate-400"></i> 20:00 às 22:00</div>
+                <div id="success-loc" class="flex items-center"><i class="fa-solid fa-location-dot mr-2 text-slate-400"></i> Arena Club</div>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="shareOnWhatsApp()" class="w-full bg-[#25D366] hover:bg-[#20ba5a] text-slate-950 font-black py-3.5 rounded-2xl transition-all shadow-lg flex items-center justify-center space-x-2 text-sm">
+                    <i class="fa-brands fa-whatsapp text-lg"></i>
+                    <span>COMPARTILHAR NO WHATSAPP</span>
+                </button>
+                <button onclick="closeSuccessModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-2xl transition-all text-xs">
+                    Fechar e Ver Lista
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-admin" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                <h3 class="font-black text-white text-base flex items-center">
+                    <i class="fa-solid fa-gears text-green-500 mr-2"></i> Painel do Administrador
+                </h3>
+                <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/50">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div id="admin-login-view" class="space-y-4">
+                <p class="text-xs text-slate-400">Digite a senha de administrador para gerenciar a pelada:</p>
+                <input type="password" id="admin-pass" placeholder="Senha (ex: 1234)" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-green-500 text-sm">
+                <button onclick="checkAdminLogin()" class="w-full bg-green-600 hover:bg-green-500 text-slate-950 font-bold py-3 rounded-2xl transition-all text-sm">
+                    Entrar no Painel
+                </button>
+            </div>
+
+            <div id="admin-panel-view" class="space-y-5 hidden">
+                <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+                    <h4 class="text-xs font-bold text-green-400 uppercase tracking-wider">Configurações da Pelada</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Data</label>
+                            <input type="text" id="cfg-date" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Horário</label>
+                            <input type="text" id="cfg-time" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Local</label>
+                            <input type="text" id="cfg-loc" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Total de Vagas</label>
+                            <input type="number" id="cfg-slots" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white" value="16">
+                        </div>
+                    </div>
+                    <button onclick="savePeladaConfig()" class="w-full bg-green-600 hover:bg-green-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-all">
+                        Salvar Alterações
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Controle de Atletas e Pagamentos</h4>
+                        <span class="text-[10px] text-slate-500">Clique no botão para alternar status</span>
+                    </div>
+                    <div id="admin-players-list" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-800 flex justify-between gap-2">
+                    <button onclick="copyGroupMessage()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-copy text-green-400"></i>
+                        <span>Copiar Mensagem Grupo</span>
+                    </button>
+                    <button onclick="shareOnWhatsAppDirect()" class="flex-1 bg-[#25D366] hover:bg-[#20ba5a] text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center space-x-1.5">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>Enviar WhatsApp</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <header class="w-full bg-slate-900 border-b border-slate-800 px-4 py-3 sticky top-0 z-40 shadow-md">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl overflow-hidden border-2 border-green-500/50 shadow-lg shadow-green-900/40 bg-slate-950 flex items-center justify-center">
+                    <img src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=200&q=80" alt="Logo Pelada" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h1 class="text-sm font-black tracking-wide text-white">PELADA DOS AMIGOS</h1>
+                    <p class="text-[10px] text-green-400 font-semibold tracking-wider">FC AMIGOS</p>
+                </div>
+            </div>
+            <button onclick="openAdminModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5">
+                <i class="fa-solid fa-gear text-green-400"></i>
+                <span>Admin</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-md mx-auto p-4 space-y-5 flex-1 pb-10">
+        
+        <div class="bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden space-y-5">
+            <div class="absolute -right-10 -bottom-10 opacity-5 pointer-events-none text-green-500 text-9xl">
+                <i class="fa-solid fa-futbol"></i>
+            </div>
+
+            <div class="text-center space-y-3">
+                <div class="w-20 h-20 rounded-3xl mx-auto overflow-hidden border-2 border-green-500/50 shadow-2xl shadow-green-900/60 bg-slate-950">
+                    <img src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=300&q=80" alt="Logo Pelada" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <div class="inline-block bg-green-500/10 border border-green-500/20 text-green-400 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase mb-1">
+                        ⚽ CONVITE OFICIAL
+                    </div>
+                    <h2 class="text-xl font-black tracking-wide text-white">PELADA DOS AMIGOS</h2>
+                    <p id="card-subtitle" class="text-xs text-slate-400">Confirme sua presença e garanta sua vaga!</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                <div class="flex items-center space-x-3 text-xs text-slate-200">
+                    <div class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-green-400">
+                        <i class="fa-regular fa-calendar"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block uppercase">Data</span>
+                        <strong id="display-date" class="font-bold">Quarta-feira, 09 de Setembro</strong>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3 text-xs text-slate-200">
+                    <div class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-green-400">
+                        <i class="fa-regular fa-clock"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block uppercase">Horário</span>
+                        <strong id="display-time" class="font-bold">20:00 às 22:00</strong>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3 text-xs text-slate-200">
+                    <div class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-green-400">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block uppercase">Local</span>
+                        <strong id="display-loc" class="font-bold">Arena Club</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center space-y-3">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-slate-400 font-bold uppercase tracking-wider">🔥 VAGAS (16 MÁX)</span>
+                    <span id="slot-counter-text" class="font-black text-green-400 text-sm">0 / 16</span>
+                </div>
+                
+                <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                    <div id="progress-bar" class="bg-gradient-to-r from-green-600 to-green-400 h-full rounded-full transition-all duration-500 w-0"></div>
+                </div>
+
+                <div id="dynamic-slot-msg" class="text-xs font-bold text-green-400 pt-1">
+                    🟢 VAGAS DISPONÍVEIS — GARANTA A SUA!
+                </div>
+            </div>
+
+            <button id="reserve-btn" onclick="openReserveModal()" class="w-full bg-green-600 hover:bg-green-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl shadow-green-900/40 flex items-center justify-center space-x-2 text-base active:scale-98">
+                <i class="fa-solid fa-futbol text-slate-950"></i>
+                <span>RESERVAR MINHA VAGA</span>
+            </button>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="font-black text-white text-sm flex items-center">
+                    <i class="fa-solid fa-users-rectangle text-green-500 mr-2"></i> ATLETAS CONFIRMADOS
+                </h3>
+                <span id="total-confirmed-badge" class="bg-green-500/10 text-green-400 border border-green-500/30 px-2.5 py-0.5 rounded-full text-xs font-bold">0 confirmados</span>
+            </div>
+
+            <div id="slots-container" class="space-y-2">
+                </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full bg-slate-900 border-t border-slate-800 py-3 text-center text-xs text-slate-500">
+        Pelada dos Amigos &copy; 2026 — Organização Prática
+    </footer>
+
+    <script>
+        let peladaData = JSON.parse(localStorage.getItem('pelada_config')) || {
+            date: "Quarta-feira, 09 de Setembro",
+            time: "20:00 às 22:00",
+            location: "Arena Club",
+            maxSlots: 16
+        };
+
+        let playersList = JSON.parse(localStorage.getItem('pelada_players')) || [];
+
+        window.onload = function() {
+            updateUIConfig();
+            renderSlots();
+        };
+
+        function saveToStorage() {
+            localStorage.setItem('pelada_config', JSON.stringify(peladaData));
+            localStorage.setItem('pelada_players', JSON.stringify(playersList));
+        }
+
+        function updateUIConfig() {
+            document.getElementById('display-date').innerText = peladaData.date;
+            document.getElementById('display-time').innerText = peladaData.time;
+            document.getElementById('display-loc').innerText = peladaData.location;
+            
+            document.getElementById('success-date').innerHTML = `<i class="fa-regular fa-calendar mr-2 text-slate-400"></i> ${peladaData.date}`;
+            document.getElementById('success-time').innerHTML = `<i class="fa-regular fa-clock mr-2 text-slate-400"></i> ${peladaData.time}`;
+            document.getElementById('success-loc').innerHTML = `<i class="fa-solid fa-location-dot mr-2 text-slate-400"></i> ${peladaData.location}`;
+        }
+
+        function renderSlots() {
+            const container = document.getElementById('slots-container');
+            container.innerHTML = '';
+
+            const max = peladaData.maxSlots || 16;
+            const confirmedCount = playersList.length;
+
+            document.getElementById('slot-counter-text').innerText = `${confirmedCount} / ${max}`;
+            document.getElementById('total-confirmed-badge').innerText = `${confirmedCount} confirmados`;
+            
+            const percent = Math.min(100, (confirmedCount / max) * 100);
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+
+            const msgEl = document.getElementById('dynamic-slot-msg');
+            const reserveBtn = document.getElementById('reserve-btn');
+
+            if (confirmedCount >= max) {
+                msgEl.innerText = "🔴 PELADA LOTADA (Lista de espera ativa)!";
+                msgEl.className = "text-xs font-bold text-amber-400 pt-1";
+                reserveBtn.className = "w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl shadow-amber-900/40 flex items-center justify-center space-x-2 text-base active:scale-98";
+                reserveBtn.innerHTML = `<i class="fa-solid fa-clock text-slate-950"></i><span>ENTRAR NA LISTA DE ESPERA</span>`;
+            } else if (max - confirmedCount === 1) {
+                msgEl.innerText = "🚨 ÚLTIMA VAGA!";
+                msgEl.className = "text-xs font-bold text-amber-400 pt-1";
+                reserveBtn.className = "w-full bg-green-600 hover:bg-green-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl shadow-green-900/40 flex items-center justify-center space-x-2 text-base active:scale-98";
+                reserveBtn.innerHTML = `<i class="fa-solid fa-futbol text-slate-950"></i><span>RESERVAR MINHA VAGA</span>`;
+            } else if (max - confirmedCount <= 5) {
+                msgEl.innerText = `🔥 CORRE! RESTAM APENAS ${max - confirmedCount} VAGAS!`;
+                msgEl.className = "text-xs font-bold text-amber-400 pt-1";
+                reserveBtn.className = "w-full bg-green-600 hover:bg-green-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl shadow-green-900/40 flex items-center justify-center space-x-2 text-base active:scale-98";
+                reserveBtn.innerHTML = `<i class="fa-solid fa-futbol text-slate-950"></i><span>RESERVAR MINHA VAGA</span>`;
+            } else {
+                msgEl.innerText = "🟢 VAGAS DISPONÍVEIS — GARANTA A SUA!";
+                msgEl.className = "text-xs font-bold text-green-400 pt-1";
+                reserveBtn.className = "w-full bg-green-600 hover:bg-green-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl shadow-green-900/40 flex items-center justify-center space-x-2 text-base active:scale-98";
+                reserveBtn.innerHTML = `<i class="fa-solid fa-futbol text-slate-950"></i><span>RESERVAR MINHA VAGA</span>`;
+            }
+
+            const totalDisplay = Math.max(max, playersList.length);
+            for (let i = 0; i < totalDisplay; i++) {
+                const player = playersList[i];
+                const div = document.createElement('div');
+                
+                if (player) {
+                    const isWaiting = i >= max;
+                    const isPaid = player.paid === true;
+                    
+                    div.className = `flex items-center justify-between p-3 rounded-2xl text-xs ${isWaiting ? 'bg-amber-950/20 border border-amber-500/30' : 'bg-slate-950 border border-green-500/30'}`;
+                    div.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <span class="w-6 h-6 rounded-lg ${isWaiting ? 'bg-amber-500/10 text-amber-400' : 'bg-green-500/10 text-green-400'} font-bold flex items-center justify-center text-[10px]">#${i+1}</span>
+                            <div>
+                                <span class="font-bold text-white text-sm">${player.name} ${isWaiting ? '<span class="text-[10px] text-amber-400 font-normal">(Espera)</span>' : ''}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-[10px] px-2 py-1 rounded-full font-bold flex items-center ${isPaid ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
+                                <i class="fa-solid ${isPaid ? 'fa-check-circle' : 'fa-clock'} mr-1"></i>${isPaid ? 'Pago' : 'Pendente'}
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    div.className = "flex items-center justify-between p-3 bg-slate-950/40 border border-slate-800/60 rounded-2xl text-xs text-slate-500";
+                    div.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <span class="w-6 h-6 rounded-lg bg-slate-900 text-slate-500 font-bold flex items-center justify-center text-[10px]">#${i+1}</span>
+                            <span class="italic">Livre</span>
+                        </div>
+                        <span class="text-[10px] text-slate-600">Disponível</span>
+                    `;
+                }
+                container.appendChild(div);
+            }
+        }
+
+        window.openReserveModal = function() {
+            document.getElementById('modal-reserve').classList.remove('hidden');
+            document.getElementById('athlete-name').value = '';
+            setTimeout(() => document.getElementById('athlete-name').focus(), 100);
+        }
+
+        window.closeReserveModal = function() {
+            document.getElementById('modal-reserve').classList.add('hidden');
+        }
+
+        window.submitReservation = function(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('athlete-name');
+            const name = nameInput.value.trim();
+            if (!name) return;
+
+            const exists = playersList.some(p => p.name.trim().toLowerCase() === name.toLowerCase());
+            if (exists) {
+                showToast("⚠️ Este nome já está na lista!", "error");
+                return;
+            }
+
+            playersList.push({ name: name, paid: false, timestamp: Date.now() });
+            saveToStorage();
+            
+            closeReserveModal();
+            document.getElementById('modal-success').classList.remove('hidden');
+            renderSlots();
+        }
+
+        window.closeSuccessModal = function() {
+            document.getElementById('modal-success').classList.add('hidden');
+        }
+
+        window.shareOnWhatsApp = function() {
+            const confirmedCount = Math.min(playersList.length, peladaData.maxSlots || 16);
+            const paidCount = playersList.filter(p => p.paid).length;
+            const text = `⚽ Já garanti minha vaga na Pelada dos Amigos! (${confirmedCount}/16) 🔥\n💰 Pagos: ${paidCount}/${confirmedCount}\nData: ${peladaData.date} às ${peladaData.time}\nLocal: ${peladaData.location}\nGaranta a sua também!`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        window.openAdminModal = function() {
+            document.getElementById('modal-admin').classList.remove('hidden');
+            document.getElementById('admin-pass').value = '';
+            document.getElementById('admin-login-view').classList.remove('hidden');
+            document.getElementById('admin-panel-view').classList.add('hidden');
+        }
+
+        window.closeAdminModal = function() {
+            document.getElementById('modal-admin').classList.add('hidden');
+        }
+
+        window.checkAdminLogin = function() {
+            const pass = document.getElementById('admin-pass').value;
+            if (pass === '1234' || pass === 'admin') {
+                document.getElementById('admin-login-view').classList.add('hidden');
+                document.getElementById('admin-panel-view').classList.remove('hidden');
+                
+                document.getElementById('cfg-date').value = peladaData.date;
+                document.getElementById('cfg-time').value = peladaData.time;
+                document.getElementById('cfg-loc').value = peladaData.location;
+                document.getElementById('cfg-slots').value = peladaData.maxSlots || 16;
+
+                renderAdminPlayersList();
+            } else {
+                showToast("Senha incorreta!", "error");
+            }
+        }
+
+        window.savePeladaConfig = function() {
+            peladaData.date = document.getElementById('cfg-date').value;
+            peladaData.time = document.getElementById('cfg-time').value;
+            peladaData.location = document.getElementById('cfg-loc').value;
+            peladaData.maxSlots = parseInt(document.getElementById('cfg-slots').value) || 16;
+
+            saveToStorage();
+            showToast("Configurações salvas com sucesso!");
+            renderSlots();
+        }
+
+        window.renderAdminPlayersList = function() {
+            const container = document.getElementById('admin-players-list');
+            container.innerHTML = '';
+
+            if (playersList.length === 0) {
+                container.innerHTML = `<p class="text-slate-500 text-xs italic text-center py-2">Nenhum atleta inscrito ainda.</p>`;
+                return;
+            }
+
+            playersList.forEach((p, idx) => {
+                const isPaid = p.paid === true;
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-xs";
+                div.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <span class="text-slate-400 font-bold">#${idx+1}</span>
+                        <span class="text-white font-medium">${p.name}</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="togglePayment(${idx})" class="px-2.5 py-1 rounded-lg font-bold transition-all ${isPaid ? 'bg-green-500/20 text-green-400 border border-green-500/40 hover:bg-green-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20'}">
+                            <i class="fa-solid ${isPaid ? 'fa-check' : 'fa-clock'} mr-1"></i>${isPaid ? 'Pago' : 'Pendente'}
+                        </button>
+                        <button onclick="removePlayer(${idx})" class="text-red-400 hover:text-red-300 p-1.5 bg-red-500/10 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        window.togglePayment = function(index) {
+            playersList[index].paid = !playersList[index].paid;
+            saveToStorage();
+            renderAdminPlayersList();
+            renderSlots();
+            showToast(`Status de pagamento atualizado!`);
+        }
+
+        window.removePlayer = function(index) {
+            playersList.splice(index, 1);
+            saveToStorage();
+            renderAdminPlayersList();
+            renderSlots();
+            showToast("Atleta removido com sucesso!");
+        }
+
+        window.copyGroupMessage = function() {
+            const confirmedCount = Math.min(playersList.length, peladaData.maxSlots || 16);
+            const paidCount = playersList.filter(p => p.paid).length;
+            const text = `⚽ PELADA DOS AMIGOS\n📅 ${peladaData.date}\n⏰ ${peladaData.time}\n📍 ${peladaData.location}\n🔥 16 VAGAS ABERTAS!\n👥 Confirmados: ${confirmedCount}/16\n💰 Pagos: ${paidCount}/${confirmedCount}\n\n📋 LISTA DE ATLETAS:\n` + 
+                playersList.map((p, i) => `${i+1}. ${p.name} ${p.paid ? '✅ (Pago)' : '⏳ (Pendente)'}`).join('\n');
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => showToast("Lista copiada para o WhatsApp!"));
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast("Lista copiada!");
+            }
+        }
+
+        window.shareOnWhatsAppDirect = function() {
+            const confirmedCount = Math.min(playersList.length, peladaData.maxSlots || 16);
+            const paidCount = playersList.filter(p => p.paid).length;
+            const text = `⚽ PELADA DOS AMIGOS\n📅 ${peladaData.date}\n⏰ ${peladaData.time}\n📍 ${peladaData.location}\n🔥 Vagas: ${confirmedCount}/16 | Pagos: ${paidCount}/${confirmedCount}`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        function showToast(msg, type = "success") {
+            const t = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-msg').innerText = msg;
+            
+            if (type === "error") {
+                icon.className = "fa-solid fa-triangle-exclamation text-red-500 text-lg";
+            } else {
+                icon.className = "fa-solid fa-circle-check text-green-500 text-lg";
+            }
+
+            t.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
+            setTimeout(() => {
+                t.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
