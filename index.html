@@ -6,6 +6,8 @@
     <title>PELADA DOS AMIGOS - Inscrição e Pagamento</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Biblioteca do Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -262,23 +264,41 @@
     </footer>
 
     <script>
-        let peladaData = JSON.parse(localStorage.getItem('pelada_config')) || {
+        // CONFIGURAÇÃO DO SUPABASE (Insira sua URL e Chave Anon reais abaixo)
+        const SUPABASE_URL = 'https://umvnkxfcwzdrswfijbet.supabase.co';
+        const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_AQUI'; // Substitua pela sua chave anon real do Supabase
+        
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let peladaData = {
             date: "Quarta-feira, 09 de Setembro",
             time: "20:00 às 22:00",
             location: "Arena Club",
             maxSlots: 16
         };
 
-        let playersList = JSON.parse(localStorage.getItem('pelada_players')) || [];
+        let playersList = [];
 
-        window.onload = function() {
+        window.onload = async function() {
+            await loadFromSupabase();
             updateUIConfig();
             renderSlots();
         };
 
-        function saveToStorage() {
-            localStorage.setItem('pelada_config', JSON.stringify(peladaData));
-            localStorage.setItem('pelada_players', JSON.stringify(playersList));
+        async function loadFromSupabase() {
+            try {
+                // Carrega config ou jogadores da tabela
+                const { data, error } = await _supabase.from('inscricoes').select('*').order('created_at', { ascending: true });
+                if (!error && data) {
+                    playersList = data.map(item => ({
+                        id: item.id,
+                        name: item.nome || item.name,
+                        paid: item.pago || item.paid || false
+                    }));
+                }
+            } catch (err) {
+                console.error("Erro ao carregar do Supabase:", err);
+            }
         }
 
         function updateUIConfig() {
@@ -312,16 +332,6 @@
                 msgEl.className = "text-xs font-bold text-amber-400 pt-1";
                 reserveBtn.className = "w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl shadow-amber-900/40 flex items-center justify-center space-x-2 text-base active:scale-98";
                 reserveBtn.innerHTML = `<i class="fa-solid fa-clock text-slate-950"></i><span>ENTRAR NA LISTA DE ESPERA</span>`;
-            } else if (max - confirmedCount === 1) {
-                msgEl.innerText = "🚨 ÚLTIMA VAGA!";
-                msgEl.className = "text-xs font-bold text-amber-400 pt-1";
-                reserveBtn.className = "w-full bg-green-600 hover:bg-green-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl shadow-green-900/40 flex items-center justify-center space-x-2 text-base active:scale-98";
-                reserveBtn.innerHTML = `<i class="fa-solid fa-futbol text-slate-950"></i><span>RESERVAR MINHA VAGA</span>`;
-            } else if (max - confirmedCount <= 5) {
-                msgEl.innerText = `🔥 CORRE! RESTAM APENAS ${max - confirmedCount} VAGAS!`;
-                msgEl.className = "text-xs font-bold text-amber-400 pt-1";
-                reserveBtn.className = "w-full bg-green-600 hover:bg-green-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-xl shadow-green-900/40 flex items-center justify-center space-x-2 text-base active:scale-98";
-                reserveBtn.innerHTML = `<i class="fa-solid fa-futbol text-slate-950"></i><span>RESERVAR MINHA VAGA</span>`;
             } else {
                 msgEl.innerText = "🟢 VAGAS DISPONÍVEIS — GARANTA A SUA!";
                 msgEl.className = "text-xs font-bold text-green-400 pt-1";
@@ -376,7 +386,7 @@
             document.getElementById('modal-reserve').classList.add('hidden');
         }
 
-        window.submitReservation = function(e) {
+        window.submitReservation = async function(e) {
             e.preventDefault();
             const nameInput = document.getElementById('athlete-name');
             const name = nameInput.value.trim();
@@ -388,9 +398,16 @@
                 return;
             }
 
-            playersList.push({ name: name, paid: false, timestamp: Date.now() });
-            saveToStorage();
-            
+            // Salva direto no Supabase
+            const { data, error } = await _supabase.from('inscricoes').insert([{ nome: name, pago: false }]).select();
+
+            if (error) {
+                showToast("Erro ao salvar vaga no banco!", "error");
+                console.error(error);
+                return;
+            }
+
+            await loadFromSupabase();
             closeReserveModal();
             document.getElementById('modal-success').classList.remove('hidden');
             renderSlots();
@@ -441,8 +458,8 @@
             peladaData.location = document.getElementById('cfg-loc').value;
             peladaData.maxSlots = parseInt(document.getElementById('cfg-slots').value) || 16;
 
-            saveToStorage();
-            showToast("Configurações salvas com sucesso!");
+            updateUIConfig();
+            showToast("Configurações atualizadas!");
             renderSlots();
         }
 
@@ -465,30 +482,41 @@
                         <span class="text-white font-medium">${p.name}</span>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <button onclick="togglePayment(${idx})" class="px-2.5 py-1 rounded-lg font-bold transition-all ${isPaid ? 'bg-green-500/20 text-green-400 border border-green-500/40 hover:bg-green-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20'}">
+                        <button onclick="togglePayment('${p.id}', ${idx})" class="px-2.5 py-1 rounded-lg font-bold transition-all ${isPaid ? 'bg-green-500/20 text-green-400 border border-green-500/40 hover:bg-green-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20'}">
                             <i class="fa-solid ${isPaid ? 'fa-check' : 'fa-clock'} mr-1"></i>${isPaid ? 'Pago' : 'Pendente'}
                         </button>
-                        <button onclick="removePlayer(${idx})" class="text-red-400 hover:text-red-300 p-1.5 bg-red-500/10 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="removePlayer('${p.id}')" class="text-red-400 hover:text-red-300 p-1.5 bg-red-500/10 rounded-lg"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 `;
                 container.appendChild(div);
             });
         }
 
-        window.togglePayment = function(index) {
-            playersList[index].paid = !playersList[index].paid;
-            saveToStorage();
-            renderAdminPlayersList();
-            renderSlots();
-            showToast(`Status de pagamento atualizado!`);
+        window.togglePayment = async function(id, index) {
+            const currentPaid = playersList[index].paid;
+            const newPaid = !currentPaid;
+
+            const { error } = await _supabase.from('inscricoes').update({ pago: newPaid }).eq('id', id);
+            if (!error) {
+                playersList[index].paid = newPaid;
+                renderAdminPlayersList();
+                renderSlots();
+                showToast(`Status atualizado!`);
+            } else {
+                showToast("Erro ao atualizar pagamento", "error");
+            }
         }
 
-        window.removePlayer = function(index) {
-            playersList.splice(index, 1);
-            saveToStorage();
-            renderAdminPlayersList();
-            renderSlots();
-            showToast("Atleta removido com sucesso!");
+        window.removePlayer = async function(id) {
+            const { error } = await _supabase.from('inscricoes').delete().eq('id', id);
+            if (!error) {
+                await loadFromSupabase();
+                renderAdminPlayersList();
+                renderSlots();
+                showToast("Atleta removido com sucesso!");
+            } else {
+                showToast("Erro ao remover atleta", "error");
+            }
         }
 
         window.copyGroupMessage = function() {
@@ -499,14 +527,6 @@
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => showToast("Lista copiada para o WhatsApp!"));
-            } else {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                showToast("Lista copiada!");
             }
         }
 
